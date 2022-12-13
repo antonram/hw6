@@ -25,24 +25,23 @@ struct MyStringHash {
 			std::size_t substrIndex = 0;
 			std::size_t wIndex = 4;
 			unsigned long long w[5] = {0, 0, 0, 0, 0};
+			unsigned long long powResult = 1;
 			for(int i = (int) k.size() -1; i >= 0; i--) {
-			//		std::cout << substrIndex << " " << w[wIndex] << std::endl;
-				w[wIndex]	+= pow(36, substrIndex)*letterDigitToNumber(k[i]);
+				w[wIndex]	+= powResult*letterDigitToNumber(k[i]);
+				powResult *= 36;
 				substrIndex++;
 				if(substrIndex == 6) {
 					wIndex--;
 					substrIndex = 0;
+					powResult = 1;
 				}
 			}
 
-			HASH_INDEX_T r[5];
 
 			HASH_INDEX_T hash = 0;
 
 			for(std::size_t i = 0; i < 5; i++) {
-				std::cout << w[i] << std::endl;
-				r[i] = rValues[i];
-				hash += r[i]*w[i];
+				hash += rValues[i]*w[i];
 			}
 
 			return hash;
