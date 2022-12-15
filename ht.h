@@ -276,9 +276,9 @@ private:
 
     // ADD MORE DATA MEMBERS HERE, AS NECESSARY
     HASH_INDEX_T size_;
-		HASH_INDEX_T numDeleted_;
+		HASH_INDEX_T numDeleted_ = 0;
     HASH_INDEX_T maxSize_;
-		double resizeFactor_;
+		double resizeFactor_ = 0;
 
 };
 
@@ -299,13 +299,13 @@ const HASH_INDEX_T HashTable<K,V,Prober,Hash,KEqual>::CAPACITIES[] =
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 HashTable<K,V,Prober,Hash,KEqual>::HashTable(
     double resizeAlpha, const Prober& prober, const Hasher& hash, const KEqual& kequal)
-       :  hash_(hash), kequal_(kequal), prober_(prober), size_(0), maxSize_(11), resizeFactor_(resizeAlpha),
-			 numDeleted_(0)
+       :  hash_(hash), kequal_(kequal), prober_(prober), size_(0), maxSize_(11)
 {
     // Initialize any other data members as necessary
     for(size_t i = 0; i < CAPACITIES[mIndex_]; i++) {
         table_.push_back(NULL);
     }
+    resizeFactor_ = resizeAlpha;
 
 }
 
@@ -313,6 +313,11 @@ HashTable<K,V,Prober,Hash,KEqual>::HashTable(
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
 {
+	for(size_t i = 0; i < table_.size(); i++) {
+		if(table_[i] != NULL) {
+			delete table_[i];
+		}
+	}
 
 }
 
@@ -320,7 +325,7 @@ HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
 {
-    return (size_ == 0);
+    return (size_ - numDeleted_ == 0);
 
 }
 
@@ -336,26 +341,31 @@ size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
 {
+
+    // same as: if(((double) size_ / (double) maxSize_) >= resizeFactor_) {
+    if(size_ >= resizeFactor_*maxSize_) {
+        resize();
+    }
+
 	// probe Key
 	HASH_INDEX_T loc = this->probe(p.first);
 	// if no location available, throw std::logic_error
 	if(loc == npos) {
-		throw std::logic_error();
+		throw std::logic_error("No location available");
 	}
 	// if key already in, replace value with new one.
 	if(table_[loc] != NULL) {
 		table_[loc]->item.second = p.second;
-		return;
+        if(table_[loc]->deleted == true) {
+            numDeleted_--;
+            table_[loc]->deleted = false;
+        }
 	}
-	// if here, then location was valid and null
-	table_[loc] = new HashItem(p);
-	size_++;
-
-	// if resize alpha exceeded, resize
-	if(((double) size_ / (double) maxSize_) >= resizeFactor_) {
-		resize();
-	}
-
+    else {
+	    // if here, then location was valid and null
+	    table_[loc] = new HashItem(p);
+        size_++;
+    }
 }
 
 // To be completed
@@ -450,8 +460,40 @@ typename HashTable<K,V,Prober,Hash,KEqual>::HashItem* HashTable<K,V,Prober,Hash,
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::resize()
 {
+	// go to next index for size
+	this->mIndex_++;
 
-    
+	// reset size variables
+	size_ = 0;
+	numDeleted_ = 0;
+
+	// copy items into temporary vector
+	std::vector<HashItem*> temp;
+	for(size_t i = 0; i < maxSize_; i++) {
+		// if item exists and has not been deleted
+		if((table_[i] != NULL) && (table_[i]->deleted == false)) {
+			temp.push_back(table_[i]);
+		}
+		// if item has been deleted
+		else if((table_[i] != NULL) && (table_[i]->deleted == true)){
+			delete table_[i];
+		}
+		table_[i] = NULL;
+	}
+
+	// update size 
+	maxSize_ = CAPACITIES[mIndex_];
+
+	// get table to new size
+	while(table_.size() != maxSize_) {
+		table_.push_back(NULL);
+	}
+
+	// insert all items again
+	for(size_t i = 0; i < temp.size(); i++) {
+        //std::cout << "TEMP " << temp[i]->item.first << " " << temp[i]->item.second << std::endl;
+		insert(temp[i]->item);
+	}    
 }
 
 // Almost complete
