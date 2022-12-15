@@ -94,4 +94,40 @@ bool boggleHelper(const std::set<std::string>& dict, const std::set<std::string>
 {
 //add your solution here!
 
+	// if empty, cannot possibly be longest word
+	if(word.size() == 0) {
+		boggleHelper(dict, prefix, board, word + board[r][c], result, r + dr, c + dc, dr, dc);
+		return false;
+	}
+
+	// if we reached limit, check if word.
+	if(r == board.size() || c == board.size()) {
+		if(dict.find(word) != dict.end()) {
+			result.insert(word);
+			return true;
+		}
+		return false;
+	}
+
+	// if word formed is a prefix
+	if(prefix.find(word) != prefix.end()) {
+		if(boggleHelper(dict, prefix, board, word + board[r][c], result, r + dr, c + dc, dr, dc) == false) {
+			if(dict.find(word) != dict.end()) {
+				result.insert(word);
+				return true;
+			}
+			return false;
+		}
+	}
+	// if not a prefix
+	else{
+			if(dict.find(word) != dict.end()) {
+				result.insert(word);
+				return true;
+			}
+			return false;
+	}
+
+	return false;
+		
 }
